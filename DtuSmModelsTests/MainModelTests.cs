@@ -248,7 +248,6 @@ namespace DtuSmModels.Tests
         public void getAndSetParameters()
         {
             //string parameterFile = "SmallPieceWiseLinResModel.prm";
-           
             string parameterFile = "SmallDiverseModel.prm";
             MainModel model = new MainModel();
             model.initializeFromFile(TestDataFolder + "\\" + parameterFile);
