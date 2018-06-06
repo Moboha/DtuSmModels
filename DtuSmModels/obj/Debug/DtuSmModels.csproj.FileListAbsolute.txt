@@ -3,3 +3,9 @@ H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModels\bin\Debug\DtuSmModels.p
 H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModels\obj\Debug\DtuSmModels.dll
 H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModels\obj\Debug\DtuSmModels.pdb
 H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModels\obj\Debug\DtuSmModels.csprojResolveAssemblyReference.cache
+C:\Users\morb\Documents\DtuSmModels\DtuSmModels\bin\Debug\DtuSmModels.dll
+C:\Users\morb\Documents\DtuSmModels\DtuSmModels\bin\Debug\DtuSmModels.pdb
+C:\Users\morb\Documents\DtuSmModels\DtuSmModels\obj\Debug\DtuSmModels.csprojAssemblyReference.cache
+C:\Users\morb\Documents\DtuSmModels\DtuSmModels\obj\Debug\DtuSmModels.csproj.CoreCompileInputs.cache
+C:\Users\morb\Documents\DtuSmModels\DtuSmModels\obj\Debug\DtuSmModels.dll
+C:\Users\morb\Documents\DtuSmModels\DtuSmModels\obj\Debug\DtuSmModels.pdb

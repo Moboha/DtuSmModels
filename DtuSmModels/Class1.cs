@@ -310,7 +310,7 @@ namespace DtuSmModels
                                     break;
                                 default:
                                     throw new Exception("Error constructing surface model. Unknown SurfModel type: " + paramTable[i, 2]);
-                                    break;
+                                
                             }
                             i++;
                         }

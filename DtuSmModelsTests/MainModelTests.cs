@@ -188,11 +188,11 @@ namespace DtuSmModels.Tests
         }
 
         [TestMethod()]
-        public void affaldxxTest()
+        public void AffaldxxTest()
         {
             //string parameterFile = TestDataFolder + "\\" + "TrojBas1_orig.prm";
-            string parameterFile = @"H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\trojBas2_maxvol_red.PRM";
-
+            //string parameterFile = @"H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\trojBas2_maxvol_red.PRM";
+            string parameterFile = "not a prm file";
 
             MainModel model = new MainModel();
 
