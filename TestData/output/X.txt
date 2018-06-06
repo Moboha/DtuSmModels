@@ -1,0 +1,107 @@
+first line
+first line
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3
+first line
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\TroejborgMuck1.prm
+nodes: 11
+connections: 12
+catchments: 3

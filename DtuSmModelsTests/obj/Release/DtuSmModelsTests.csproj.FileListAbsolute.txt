@@ -1,0 +1,8 @@
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModelsTests\bin\Release\DtuSmModelsTests.dll
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModelsTests\bin\Release\DtuSmModelsTests.pdb
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModelsTests\bin\Release\DtuSmModels.dll
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModelsTests\bin\Release\Microsoft.VisualStudio.QualityTools.UnitTestFramework.dll
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModelsTests\bin\Release\DtuSmModels.pdb
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModelsTests\obj\Release\DtuSmModelsTests.csprojResolveAssemblyReference.cache
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModelsTests\obj\Release\DtuSmModelsTests.dll
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModelsTests\obj\Release\DtuSmModelsTests.pdb

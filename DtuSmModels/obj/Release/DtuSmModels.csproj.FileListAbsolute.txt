@@ -1,0 +1,5 @@
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModels\bin\Release\DtuSmModels.dll
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModels\bin\Release\DtuSmModels.pdb
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModels\obj\Release\DtuSmModels.dll
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModels\obj\Release\DtuSmModels.pdb
+H:\SyncPC\csharp\SurrogateModels\DtuSmModels\DtuSmModels\obj\Release\DtuSmModels.csprojResolveAssemblyReference.cache
