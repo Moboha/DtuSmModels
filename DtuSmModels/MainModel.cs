@@ -29,6 +29,8 @@ namespace DtuSmModels
         public double t; //in seconds
         private RainfallData raindata;
         private List<RainfallData> individualRainDatas;
+
+        public int RainfallDataLength => raindata.data.Length;
         private int lenghtOfRainfallData;
         public StateVector state;
 
@@ -157,7 +159,7 @@ namespace DtuSmModels
             lenghtOfRainfallData = raindata.data.Count();
         }
 
-        public void stepModelWithSetRain(int numberOfSteps)
+        public void stepModelWithSetRain(int numberOfSteps = 1)
         {
             for (int i = 0; i < numberOfSteps; i++)
             {
