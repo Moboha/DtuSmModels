@@ -1,5 +1,0 @@
-asdf
-
-Surface cannot be connected directly to outlet. 
-
-Der er pt et problem med output hvis et compartment har to forbindelser til outlets, da disse pt har det samme index. Kan sikkert fixes ved atsørge for at sammenligningen foregår på name i stedet for index. 
