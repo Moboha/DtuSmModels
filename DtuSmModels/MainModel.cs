@@ -6,21 +6,24 @@ using System.Threading.Tasks;
 
 
 namespace DtuSmModels
-{   public static class myconst
+{
+    public static class myconst
     {
         public const double DT = 60; //time step in seconds
-
     }
 
     public class MainModel : IMainModel
     {
-       // const double StepSizeInSec = 60;
+        public static double TimeStepInSeconds { get; } = 60;
+        public List<Node> Nodes => nodes;
 
         private List<Node> nodes;
         private List<Connection> connections;
         private List<Catchment> catchments;
         private int[] iOutlets; //index of outlets in the state vector.
+
         private double[] dydt; //change to state vector
+
         //public double[] volumes { get; set; } //state vector
         public int lengthOfStateVector;
         public double t; //in seconds
@@ -45,7 +48,12 @@ namespace DtuSmModels
         public void modelStep(double dt, double[] forcing)
         {
             state.values = mySolver.solve(dt, state.values, forcing);
-            foreach (int i in iOutlets){ ((Outlet)nodes[i]).flow = state.values[i] / myconst.DT; state.values[i] = 0; }
+            foreach (int i in iOutlets)
+            {
+                ((Outlet) nodes[i]).flow = state.values[i] / myconst.DT;
+                state.values[i] = 0;
+            }
+
             t += dt;
         }
 
@@ -59,11 +67,11 @@ namespace DtuSmModels
             //System.Array.Clear(dydt,0,lengthOfStateVector);
             double[] tempDyDt = new double[lengthOfStateVector];
 
-            for (int i = 0; i < vols.Length; i++)//MB: Constraining to volumes above or equal to zero.
+            for (int i = 0; i < vols.Length; i++) //MB: Constraining to volumes above or equal to zero.
             {
-                    if (vols[i] < 0) vols[i] = 0;
+                if (vols[i] < 0) vols[i] = 0;
             }
-          
+
 
             foreach (Connection con in connections)
             {
@@ -79,13 +87,11 @@ namespace DtuSmModels
                 }
                 catch (Exception ex1)
                 {
-                    Exception ex2 = new Exception("Time t=: " + t  + " Error calculating flow: " + nodes[con.from].name + " to " + nodes[con.to].name + "   vol in from node=" + vols[con.from], ex1);
+                    Exception ex2 = new Exception("Time t=: " + t + " Error calculating flow: " + nodes[con.from].name + " to " + nodes[con.to].name + "   vol in from node=" + vols[con.from], ex1);
                     throw ex2;
                 }
-
-
-
             }
+
             tempDyDt = RungeKutta4.arrSum(tempDyDt, forcing);
 
             return tempDyDt;
@@ -96,30 +102,26 @@ namespace DtuSmModels
             int i = 0;
             try
             {
-            for (i = 0; i < lenghtOfRainfallData; i++)
-            {
-                stepModelWithSetRain(1);
-                //collectOutputData();
-            }
+                for (i = 0; i < lenghtOfRainfallData; i++)
+                {
+                    stepModelWithSetRain(1);
+                    //collectOutputData();
+                }
             }
             catch (Exception e)
             {
                 throw new Exception("Error at time step " + i + ": " + e.Message);
             }
-
-  
-
         }
 
         private void collectOutputData()
         {
-
             output.timeInSeconds.Add(t);
             foreach (SmOutput xout in output.dataCollection)
-            {   
-                if(xout.type == SmOutput.outputType.GlobalVolumen)
+            {
+                if (xout.type == SmOutput.outputType.GlobalVolumen)
                 {
-                        xout.updateData(state.values.Sum());
+                    xout.updateData(state.values.Sum());
                 }
                 else if (xout.type == SmOutput.outputType.linkFlowTimeSeries)
                 {
@@ -141,7 +143,7 @@ namespace DtuSmModels
             }
         }
 
-        public void setRainDataForAllCatchments(double[] rainInMmOneMinSteps)//Only apply to catchments where individualRainData has not been assigned.
+        public void setRainDataForAllCatchments(double[] rainInMmOneMinSteps) //Only apply to catchments where individualRainData has not been assigned.
         {
             raindata.setRainData(rainInMmOneMinSteps);
 
@@ -150,25 +152,25 @@ namespace DtuSmModels
                 //if (catx is TA1) ((TA1)catx).setRainfallData(raindata);
                 catx.setRainfallData(raindata);
             }
+
             t = 0;
             lenghtOfRainfallData = raindata.data.Count();
-
         }
 
         public void stepModelWithSetRain(int NumberOfSteps)
-        { 
+        {
             for (int i = 0; i < NumberOfSteps; i++)
             {
                 double[] forcingVector = new double[state.values.Length];
                 foreach (Catchment cat in catchments)
                 {
-                    forcingVector[((Compartment)cat.node).index] = cat.getNextFlowInM3PrS(); ;
-
+                    forcingVector[((Compartment) cat.node).index] = cat.getNextFlowInM3PrS();
+                    ;
                 }
+
                 modelStep(myconst.DT, forcingVector);
                 collectOutputData();
             }
-
         }
 
         public void initializeFromFile(string parameterFileFullPath)
@@ -177,7 +179,7 @@ namespace DtuSmModels
             this.nodes = instantiateNodes(paramTable);
             this.connections = getConnections(paramTable);
             this.catchments = getCatchments(paramTable);
-            lengthOfStateVector = ((Compartment)nodes[0]).totalNumberOfCompartments();
+            lengthOfStateVector = ((Compartment) nodes[0]).totalNumberOfCompartments();
 
             this.state = new StateVector();
             this.state.values = new double[lengthOfStateVector];
@@ -187,8 +189,8 @@ namespace DtuSmModels
             foreach (Node n in nodes)
             {
                 if (n is Outlet) xioutlets.Add(n.index);
-
             }
+
             this.iOutlets = xioutlets.ToArray();
 
 
@@ -223,6 +225,7 @@ namespace DtuSmModels
                 i += con.setParameterArray(locParams, i);
                 if (logFile != null) logFile.WriteLine(" i=" + i);
             }
+
             foreach (Catchment cat in catchments)
             {
                 if (logFile != null) logFile.WriteLine("setParameters() i=" + i);
@@ -231,13 +234,13 @@ namespace DtuSmModels
                 i += cat.setParameterArray(locParams, i);
                 if (logFile != null) logFile.WriteLine(" i=" + i);
             }
-
         }
 
-       public bool setIndividualRainData(string catchmentNode, double[] oneMinuteRainfallx)
-        {//asdfasdfasfdasdf ikke tested endnu.
-        bool success = false;
-            
+        public bool setIndividualRainData(string catchmentNode, double[] oneMinuteRainfallx)
+        {
+            //asdfasdfasfdasdf ikke tested endnu.
+            bool success = false;
+
             if (lenghtOfRainfallData == 0)
             {
                 lenghtOfRainfallData = oneMinuteRainfallx.Length;
@@ -253,7 +256,8 @@ namespace DtuSmModels
             {
                 individualRainDatas = new List<RainfallData>();
             }
-           RainfallData rainDatax = new RainfallData();
+
+            RainfallData rainDatax = new RainfallData();
             rainDatax.setRainData(oneMinuteRainfallx);
             individualRainDatas.Add((rainDatax));
             foreach (var cat in catchments)
@@ -264,15 +268,14 @@ namespace DtuSmModels
                     success = true;
                     break;
                 }
-
             }
+
             t = 0;
             return success;
         }
 
         private List<Catchment> getCatchments(string[,] paramTable)
         {
-
             var xcatchments = new List<Catchment>();
 
             bool bInRunoffSection = false;
@@ -288,7 +291,12 @@ namespace DtuSmModels
 
                     if (bInSurfaceModelsSection)
                     {
-                        if (paramTable[i, 0] == "[EndSect]") { bInSurfaceModelsSection = false; i++; }
+                        if (paramTable[i, 0] == "[EndSect]")
+                        {
+                            bInSurfaceModelsSection = false;
+                            i++;
+                        }
+
                         while (paramTable[i, 0] == "<SurfMod>")
                         {
                             switch (paramTable[i, 2])
@@ -310,14 +318,20 @@ namespace DtuSmModels
                                     break;
                                 default:
                                     throw new Exception("Error constructing surface model. Unknown SurfModel type: " + paramTable[i, 2]);
-                                
                             }
+
                             i++;
                         }
                     }
-                    if (paramTable[i, 0] == "[EndSect]") { bInRunoffSection = false; i++; }
+
+                    if (paramTable[i, 0] == "[EndSect]")
+                    {
+                        bInRunoffSection = false;
+                        i++;
+                    }
                 }
             }
+
             return xcatchments;
         }
 
@@ -335,7 +349,8 @@ namespace DtuSmModels
                     {
                         if (paramTable[i, 0] == "[EndSect]") bInHydraulicSection = false;
                         else
-                        {   //instantiate all compartments
+                        {
+                            //instantiate all compartments
                             if (paramTable[i, 0] == "<name>")
                             {
                                 {
@@ -363,22 +378,19 @@ namespace DtuSmModels
                                                 connections.Add(new SpillingVolume(fromComp.index, toComp.index, paramTable[i, 3]));
                                                 break;
                                             case "UnitHydro":
-                                                connections.Add(new UnitHydrograph(fromComp.index, toComp.index, paramTable[i, 3],this));
-                                                    break;
+                                                connections.Add(new UnitHydrograph(fromComp.index, toComp.index, paramTable[i, 3], this));
+                                                break;
                                             case "TriggeredPWLinRes":
                                                 connections.Add(new TriggeredPWLinRes(fromComp.index, toComp.index, paramTable[i, 3]));
                                                 break;
                                             default:
                                                 throw new NotImplementedException("Unknown connection type: " + paramTable[i, 2]);
-
                                         }
 
                                         i++;
                                     }
-
                                 }
                             }
-
                         }
                     }
                 }
@@ -395,21 +407,18 @@ namespace DtuSmModels
             {
                 if (con.GetType() == typeof(PieceWiseLinRes))
                 {
-                    for (int i = 0; i < ((PieceWiseLinRes)con).slopes.Length - 1; i++)
+                    for (int i = 0; i < ((PieceWiseLinRes) con).slopes.Length - 1; i++)
                     {
-                        if (Double.IsNaN(((PieceWiseLinRes)con).slopes[i]))
+                        if (Double.IsNaN(((PieceWiseLinRes) con).slopes[i]))
                         {
                             throw new Exception("Error in slopes in PieceWiseLinRes: " + nodes[con.from].name + " " + nodes[con.to].name + " Migth be due to to identical volume data points. ");
-
                         }
-
                     }
                 }
-
             }
+
             bNoErrors = true;
             return bNoErrors;
-
         }
 
         private Node getNode(string v)
@@ -418,6 +427,7 @@ namespace DtuSmModels
             {
                 if (comp.name == v) return comp;
             }
+
             throw new Exception("No compartment called " + v);
         }
 
@@ -434,7 +444,8 @@ namespace DtuSmModels
                 {
                     if (paramTable[i, 0] == "[EndSect]") bInHydraulicSection = false;
                     else
-                    {   //instantiate all compartments
+                    {
+                        //instantiate all compartments
                         if (paramTable[i, 0] == "<name>")
                         {
                             //if (paramTable[i + 1, 0] == "<type>" && paramTable[i + 1, 1] == "drainage")
@@ -442,16 +453,17 @@ namespace DtuSmModels
                             {
                                 Nodes.Add(new DrainageCompartment(paramTable[i, 1]));
                             }
+
                             if (paramTable[i + 1, 0] == "<type>" && paramTable[i + 1, 1] == Surface1Compartment.tag)
                             {
                                 Nodes.Add(new Surface1Compartment(paramTable[i, 1]));
                             }
+
                             if (paramTable[i + 1, 0] == "<type>" && paramTable[i + 1, 1] == Outlet.tag)
                             {
                                 Nodes.Add(new Outlet(paramTable[i, 1]));
                             }
                         }
-
                     }
                 }
             }
@@ -482,31 +494,31 @@ namespace DtuSmModels
             {
                 bool bIsEmpty = true;
 
-                string[] split = paramLines[i].Split(new Char[] { ' ', '\t', '=' }, StringSplitOptions.RemoveEmptyEntries);
+                string[] split = paramLines[i].Split(new Char[] {' ', '\t', '='}, StringSplitOptions.RemoveEmptyEntries);
                 int column = 0;
                 foreach (string s in split)
                 {
                     if (s[0] == '/')
                     {
-                        break;//If comment go to next line.
+                        break; //If comment go to next line.
                     }
                     else
-                    {   if (bIsEmpty) j++;
+                    {
+                        if (bIsEmpty) j++;
                         bIsEmpty = false;
                         paramTable[j, column] = s;
                         column++;
                     }
                 }
             }
+
             return paramTable;
         }
 
         public void setOutFile(string filename)
         {
-
             this.logFile = new System.IO.StreamWriter(filename, true);
             logFile.WriteLine("first line");
-
         }
 
         public bool addOutputVariable(string fromNode, string toNode, string name)
@@ -515,8 +527,8 @@ namespace DtuSmModels
 
             int fromIndex = getNode(fromNode).index;
             int toIndex = getNode(toNode).index;
-           // string toName = getNode(toNode).name;
-           //problem at outlets for samme index - lav om. 
+            // string toName = getNode(toNode).name;
+            //problem at outlets for samme index - lav om. 
             foreach (Connection con in connections)
             {
                 if (con.from == fromIndex && con.to == toIndex)
@@ -528,11 +540,12 @@ namespace DtuSmModels
                     bsuccess = true;
                 }
             }
+
             return bsuccess;
         }
 
         public bool addOutputVariable(SmOutput.outputType type)
-        {   
+        {
             bool bsuccess = false;
 
             SmOutput xout = new SmOutput();
@@ -547,7 +560,7 @@ namespace DtuSmModels
         {
             bool bsuccess = false;
 
-            if(type != SmOutput.outputType.nodeVolume) throw new Exception("Unsupported output type for node " + nodeName);
+            if (type != SmOutput.outputType.nodeVolume) throw new Exception("Unsupported output type for node " + nodeName);
 
             foreach (Node _node in nodes)
             {
@@ -557,7 +570,7 @@ namespace DtuSmModels
                     xout.type = SmOutput.outputType.nodeVolume;
                     xout.name = "Volume in " + nodeName;
                     xout.nodex = _node;
-                    
+
                     output.addNewDataSeries(xout);
                     bsuccess = true;
                 }
@@ -571,29 +584,29 @@ namespace DtuSmModels
 
         public bool addOutputVariable(string outletName)
         {
-            
             bool bsuccess = false;
 
             foreach (int i in iOutlets)
             {
-                if (nodes[i].name ==outletName)
+                if (nodes[i].name == outletName)
                 {
                     SmOutput xout = new SmOutput();
                     xout.type = SmOutput.outputType.outletFlowTimeSeries;
                     xout.name = outletName;
-                //jeg er i gang her MB og alle andre steder relateret til output. :
+                    //jeg er i gang her MB og alle andre steder relateret til output. :
                     foreach (Node _node in nodes)
                     {
-                        if(_node.name == outletName) //not robust - add check for type.
+                        if (_node.name == outletName) //not robust - add check for type.
                         {
-                            xout.outletx = (Outlet)_node;
-                            }
+                            xout.outletx = (Outlet) _node;
+                        }
                     }
-                    
+
                     output.addNewDataSeries(xout);
                     bsuccess = true;
                 }
             }
+
             if (!bsuccess) throw new Exception("could not find output variable " + outletName);
 
             return bsuccess;
@@ -612,14 +625,12 @@ namespace DtuSmModels
             foreach (Connection con in connections)
             {
                 allParamsList.Add(con.getParameterArray());
-
             }
 
             foreach (Catchment cat in catchments)
             {
                 allParamsList.Add(cat.getParameterArray());
             }
-
 
 
             int totalNumberOfDoubles = 0;
@@ -635,15 +646,14 @@ namespace DtuSmModels
                 item.CopyTo(parameterArray, i);
                 i += item.Count();
             }
+
             if (logFile != null) logFile.WriteLine("getParameters() returning param array");
             return parameterArray;
-
         }
 
         public void writeCommentInOutFile()
         {
             if (logFile != null) logFile.WriteLine("Comment in");
-
         }
 
         public void saveModelParameters(string prmFileFullPath)
@@ -658,9 +668,8 @@ namespace DtuSmModels
                 prmFile.WriteLine("\t<type>   " + x.typeTag());
                 foreach (Connection con in connections)
                 {
-                    if (nodes[con.from].name == x.name)//unneccesary strcomp  - index could do it?
+                    if (nodes[con.from].name == x.name) //unneccesary strcomp  - index could do it?
                     {
-
                         if (con.to == System.Int32.MaxValue) //outlets are given MaxValue as magic number.
                         {
                             prmFile.WriteLine("\t<connection> " + "outlet" + "  " + con.typeTag() + " " + con.parameterString());
@@ -668,15 +677,14 @@ namespace DtuSmModels
                         else
                         {
                             prmFile.WriteLine("\t<connection> " + nodes[con.to].name + "  " + con.typeTag() + " " + con.parameterString());
-
                         }
-
                     }
                 }
 
 
                 prmFile.WriteLine("\t************************************");
             }
+
             prmFile.WriteLine("[EndSect]");
             prmFile.WriteLine("/>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
             prmFile.WriteLine("/>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
@@ -696,54 +704,63 @@ namespace DtuSmModels
 
 
             prmFile.Close();
-
         }
+
+        public List<Connection> Connections => connections;
 
         public List<Connection> getConnections()
         {
             return connections;
         }
 
+        public List<string> CatchmentNodeNames => catchments.Select(c => c.node.name).ToList();
+
+        public List<string> NodeNames => nodes.Select(n => n.name).ToList();
+
         public List<String> getCatchmentNodeNames()
         {
             List<String> cano = new List<string>(catchments.Count);
             foreach (var item in catchments)
             {
-                cano.Add(item.node.name);                
+                cano.Add(item.node.name);
             }
+
             return cano;
         }
 
-        public string getNodeName(int index) { return nodes[index].name; }
+        public string getNodeName(int index)
+        {
+            return nodes[index].name;
+        }
 
         public double[] getSurfaceModuleStates()
         {
             int nStates = 0;
             foreach (Catchment catx in catchments)
             {
-                if (catx is LinResSurf2) {
-                    nStates += 2;// ((LinResSurf2)catx).setRainfallData(raindata);
+                if (catx is LinResSurf2)
+                {
+                    nStates += 2; // ((LinResSurf2)catx).setRainfallData(raindata);
                 }
                 else
                 {
                     throw new Exception("getSurfaceModuleStates not implementet for: " + catx.GetType());
-                }                   
+                }
             }
+
             double[] surfState = new double[nStates];
             int i = 0;
             foreach (Catchment catx in catchments)
             {
-                
                 if (catx is LinResSurf2)
                 {
-                    surfState[i] = ((LinResSurf2)catx).state[0];
-                    surfState[i+1] = ((LinResSurf2)catx).state[1];
+                    surfState[i] = ((LinResSurf2) catx).state[0];
+                    surfState[i + 1] = ((LinResSurf2) catx).state[1];
                     i += 2;
                 }
-
             }
 
-            return surfState;    
+            return surfState;
         }
 
         public void setSurfaceModuleStates(double[] newStates)
@@ -753,9 +770,9 @@ namespace DtuSmModels
                 int i = 0;
                 if (catx is LinResSurf2)
                 {
-                    ((LinResSurf2)catx).state[0] = newStates[i];
-                    ((LinResSurf2)catx).state[1] = newStates[i+1];                   
-                    i += 2;// 
+                    ((LinResSurf2) catx).state[0] = newStates[i];
+                    ((LinResSurf2) catx).state[1] = newStates[i + 1];
+                    i += 2; // 
                 }
                 else
                 {
@@ -770,9 +787,4 @@ namespace DtuSmModels
             if (logFile != null) logFile.Close();
         }
     }
-
-
-
-
 }
-
