@@ -157,15 +157,14 @@ namespace DtuSmModels
             lenghtOfRainfallData = raindata.data.Count();
         }
 
-        public void stepModelWithSetRain(int NumberOfSteps)
+        public void stepModelWithSetRain(int numberOfSteps)
         {
-            for (int i = 0; i < NumberOfSteps; i++)
+            for (int i = 0; i < numberOfSteps; i++)
             {
                 double[] forcingVector = new double[state.values.Length];
                 foreach (Catchment cat in catchments)
                 {
                     forcingVector[((Compartment) cat.node).index] = cat.getNextFlowInM3PrS();
-                    ;
                 }
 
                 modelStep(myconst.DT, forcingVector);
