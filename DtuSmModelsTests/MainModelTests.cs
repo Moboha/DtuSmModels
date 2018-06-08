@@ -1,23 +1,16 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using DtuSmModels;
-using System;
-using System.Diagnostics;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace DtuSmModels.Tests
 {
-    [TestClass()]
+    [TestClass]
     public class MainModelTests
     {
-        string TestDataFolder = @"H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData"; //
-        //string TestDataFolder = @"R:\Research Communities\SurrogateModelling\Data\TestData";
+        string TestDataFolder = @"../../../TestData";
 
-
-
-        [TestMethod()]
+        [TestMethod]
         public void MainModelTest()
         {
             MainModel model = new MainModel();
@@ -27,7 +20,7 @@ namespace DtuSmModels.Tests
         /// <summary>
         /// 
         /// </summary>
-        [TestMethod()]
+        [TestMethod]
         public void initializeFromFileTest()
         {
             string parameterFile = "ParametersVers2.prm";
@@ -39,10 +32,9 @@ namespace DtuSmModels.Tests
 
 
             model.saveModelParameters(TestDataFolder + "\\" + "autoWrittenPrm.Prm");
-
         }
 
-        [TestMethod()]
+        [TestMethod]
         public void modelStepTest()
         {
             string parameterFile = "SmallPieceWiseLinResModel.prm";
@@ -60,15 +52,14 @@ namespace DtuSmModels.Tests
             model.setInitialCond(init);
             while (model.t < 24 * 360 * 60 * 1)
             {
-                forcing[0] =  rnd.NextDouble();
+                forcing[0] = rnd.NextDouble();
                 model.modelStep(60, forcing);
                 //  Debug.WriteLine("sdf");
                 // var A = model.volumes;
                 //Console.WriteLine("to console2 " + A[0] + " " + A[1] + " " + A[2] + " " + A[3]);
-
             }
-            Console.Write("number of states:" + model.state.values.Length + " states:");
 
+            Console.Write("number of states:" + model.state.values.Length + " states:");
 
 
             foreach (double x in model.state.values) Console.Write(x + " ");
@@ -77,13 +68,13 @@ namespace DtuSmModels.Tests
             Assert.IsFalse(false);
         }
 
-        [TestMethod()]
+        [TestMethod]
         public void runForOneMinuteSingleRainInputTest()
         {
             string parameterFile = "LargeModel.prm";
             MainModel model = new MainModel();
 
-           // model.setOutFile(@"R:\Research Communities\SurrogateModelling\Matlab\Tests\output\affaldbb.txt");
+            // model.setOutFile(out.txt");
 
             model.initializeFromFile(TestDataFolder + "\\" + parameterFile);
             double[] rainfall = new double[120];
@@ -91,8 +82,8 @@ namespace DtuSmModels.Tests
 
             //model.setRainData(rainfall);
             //foreach (var x in rainfall) model.stepModelWithSetRain();
-            model.addOutputVariable("aaaSM2", "aaaSM3","");
-            model.addOutputVariable("bbbSM6", "bbbSM7","");
+            model.addOutputVariable("aaaSM2", "aaaSM3", "");
+            model.addOutputVariable("bbbSM6", "bbbSM7", "");
             model.addOutputVariable("bbbSM6", SmOutput.outputType.nodeVolume);
 
             model.setRainDataForAllCatchments(rainfall);
@@ -102,13 +93,11 @@ namespace DtuSmModels.Tests
             foreach (double x in model.state.values) Console.Write(x + " ");
             Console.WriteLine("\ndata:");
 
-            foreach(double x in model.output.dataCollection[1].data) Console.Write(x + " ");
-
-
+            foreach (double x in model.output.dataCollection[1].data) Console.Write(x + " ");
         }
 
 
-        [TestMethod()]
+        [TestMethod]
         public void runForOneMinuteSingleRainInputTest2()
         {
             string parameterFile = "SmallDiverseModel.prm";
@@ -120,12 +109,9 @@ namespace DtuSmModels.Tests
 
             model.setRainDataForAllCatchments(rainfall);
             model.runForOneMinuteRainInput();
-
-
-
         }
 
-        [TestMethod()]
+        [TestMethod]
         public void forecastTest1()
         {
             string parameterFile = "SmallDiverseModel.prm";
@@ -139,11 +125,10 @@ namespace DtuSmModels.Tests
             model.setInitialCond(model.state.values);
             model.setRainDataForAllCatchments(rainfall);
             model.runForOneMinuteRainInput();
-
         }
 
 
-        [TestMethod()]
+        [TestMethod]
         public void forecastTest2()
         {
             string parameterFile = "LinResSurfaceModelTest.prm";
@@ -152,7 +137,7 @@ namespace DtuSmModels.Tests
             model.initializeFromFile(TestDataFolder + "\\" + parameterFile);
             double[] rainfall = new double[100];
             rainfall[5] = 5; //5 mm of rainfall in one minute.
-            
+
             model.addOutputVariable("SM1", "SM2", "");
             model.addOutputVariable("SM2", "SM3", "");
 
@@ -161,7 +146,6 @@ namespace DtuSmModels.Tests
 
             double[] initSurf = model.getSurfaceModuleStates();
             double[] initStates = model.state.values;
-
 
 
             model.setSurfaceModuleStates(initSurf);
@@ -182,21 +166,15 @@ namespace DtuSmModels.Tests
 
             Assert.IsTrue(Lx1 == Lx2);
             Assert.IsTrue(data1.ToArray().SequenceEqual(data2.ToArray()));
-
-
-
         }
 
-        [TestMethod()]
+        [TestMethod]
         public void AffaldxxTest()
         {
-            //string parameterFile = TestDataFolder + "\\" + "TrojBas1_orig.prm";
-            //string parameterFile = @"H:\SyncPC\csharp\SurrogateModels\DtuSmModels\TestData\trojBas2_maxvol_red.PRM";
             string parameterFile = "not a prm file";
 
             MainModel model = new MainModel();
 
-            // model.setOutFile(@"R:\Research Communities\SurrogateModelling\Matlab\Tests\output\affaldbb.txt");
             try
             {
                 model.initializeFromFile(parameterFile);
@@ -205,24 +183,21 @@ namespace DtuSmModels.Tests
             {
                 return;
             }
-            throw new Exception("not supposed to reach this line");
 
+            throw new Exception("not supposed to reach this line");
         }
 
 
-
-        [TestMethod()]
+        [TestMethod]
         public void affaldxxTest2()
         {
             string parameterFile = "SmallLinResAndUnitHydroModel.PRM";
             MainModel model = new MainModel();
 
-            // model.setOutFile(@"R:\Research Communities\SurrogateModelling\Matlab\Tests\output\affaldbb.txt");
-
             model.initializeFromFile(TestDataFolder + "\\" + parameterFile);
-            List<Connection>conns = model.getConnections();
+            List<Connection> conns = model.getConnections();
             double[] myparams = conns[1].getParameterArray();
-            double[] newparams = new double[] { 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0 };
+            double[] newparams = {0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0};
             conns[1].setParameters(newparams);
             myparams = conns[1].getParameterArray();
 
@@ -237,14 +212,13 @@ namespace DtuSmModels.Tests
             Console.WriteLine("\ndata:");
 
             // foreach (double x in model.output.dataCollection[0].data) Console.Write(x + " ");
-      //      model.saveModelParameters(TestDataFolder + "\\" + "autoWrittenPrm3.Prm");
-
+            //      model.saveModelParameters(TestDataFolder + "\\" + "autoWrittenPrm3.Prm");
         }
 
         /// <summary>
         /// 
         /// </summary>
-        [TestMethod()]
+        [TestMethod]
         public void getAndSetParameters()
         {
             //string parameterFile = "SmallPieceWiseLinResModel.prm";
@@ -255,12 +229,13 @@ namespace DtuSmModels.Tests
             foreach (double x in parameters) Console.Write(x + " ");
 
             var newParams = new double[32];
-            int i= 0;
+            int i = 0;
             foreach (double x in parameters)
             {
                 newParams[i] = 1.5 * x;
                 i++;
             }
+
             model.setParameter(newParams);
             model.saveModelParameters(TestDataFolder + "\\" + "autoWrittenPrm4.Prm");
 
@@ -268,13 +243,8 @@ namespace DtuSmModels.Tests
             Console.WriteLine("");
             foreach (double x in parameters2) Console.Write(x + " ");
 
-            
 
             Assert.IsFalse(false);
         }
-
-
-
     }
-
 }
