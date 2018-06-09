@@ -25,10 +25,12 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>..\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>
+    </DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -42,7 +44,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Catchments.cs" />
-    <Compile Include="Class1.cs" />
+    <Compile Include="MainModel.cs" />
     <Compile Include="Compartment.cs" />
     <Compile Include="connection.cs" />
     <Compile Include="DrainageCompartment.cs" />
@@ -68,9 +70,6 @@
     <Compile Include="TA1.cs" />
     <Compile Include="TriggeredPWLinRes.cs" />
     <Compile Include="UnitHydrograph.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="ClassDiagram1.cd" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
