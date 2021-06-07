@@ -7,25 +7,30 @@ using System.Threading.Tasks;
 
 namespace DtuSmModels
 {
+    
     public static class myconst
     {
         public const double DT = 60; //time step in seconds
     }
 
     public class MainModel : IMainModel
-    {
-        public static double TimeStepInSeconds { get; } = 60;
+    {   const double virtuallyZero = 0.00000000001;// used to avoid wierd values with both denominator and counters approax zero. 
+
+        //public static double TimeStepInSeconds { get; } = 60;
         public List<Node> Nodes => nodes;
 
         private List<Node> nodes;
         private List<Connection> connections;
         private List<Catchment> catchments;
-        private int[] iOutlets; //index of outlets in the state vector.
+        private List<FlowDivider> flowDividers;
+        public int[] iOutlets; //index of outlets in the state vector.
 
-        private double[] dydt; //change to state vector
+        //private double[] dydt; //change to state vector
+        private double[] qSplits; // flows in splitters. NOT part of the volume state vector.
+        private double[] qMassSplits; //flux of mass in splitters
 
-        //public double[] volumes { get; set; } //state vector
         public int lengthOfStateVector;
+        public int NhydraulicStates; //used when including WQ calculations wich doubles the length of the statevector.
         public double t; //in seconds
         private RainfallData raindata;
         private List<RainfallData> individualRainDatas;
@@ -33,7 +38,7 @@ namespace DtuSmModels
         public int RainfallDataLength => raindata.data.Length;
         private int lenghtOfRainfallData;
         public StateVector state;
-
+        private bool bIncludeWQ;
 
         private System.IO.StreamWriter logFile; //affald - slet igen senere. 
         public SmOutputCollection output;
@@ -43,8 +48,10 @@ namespace DtuSmModels
         {
             //Console.Write("New Surrogate model");
             Compartment.resetNumberOfCompartments();
+            FlowDivider.resetNumberOfFlowDividers();
             raindata = new RainfallData();
             this.output = new SmOutputCollection();
+            this.bIncludeWQ = false;
         }
 
         public void modelStep(double dt, double[] forcing)
@@ -52,7 +59,7 @@ namespace DtuSmModels
             state.values = mySolver.solve(dt, state.values, forcing);
             foreach (int i in iOutlets)
             {
-                ((Outlet) nodes[i]).flow = state.values[i] / myconst.DT;
+                ((Outlet)nodes[i]).flow = state.values[i] / myconst.DT;
                 state.values[i] = 0;
             }
 
@@ -64,8 +71,17 @@ namespace DtuSmModels
             state.values = init;
         }
 
-        internal double[] calculateDyDt(double[] vols, double[] forcing)
+        public void includeWQcalculation()
         {
+            bIncludeWQ = true;
+            NhydraulicStates = lengthOfStateVector;
+            lengthOfStateVector = lengthOfStateVector * 2;
+            this.state.values = new double[lengthOfStateVector];
+        }
+
+        internal double[] calculateDyDt(double[] vols, double[] forcing)
+        {   
+
             //System.Array.Clear(dydt,0,lengthOfStateVector);
             double[] tempDyDt = new double[lengthOfStateVector];
 
@@ -75,27 +91,108 @@ namespace DtuSmModels
             }
 
 
+            for (int i = 0; i < qSplits.Length; i++)
+            {
+                qSplits[i] = 0;
+                qMassSplits[i] = 0;
+            }
             foreach (Connection con in connections)
             {
                 try
-                {
-                    int j = con.from;
-                    double x = con.calculateFlow(vols);
-                    tempDyDt[j] -= x;
-                    if (con.to != System.Int32.MaxValue) //outlets are given MaxValue as magic number.
+                {                                    
+                    if (!con.bFromFlowDivider)
                     {
-                        tempDyDt[con.to] += x;
+                        double q = con.calculateFlow(vols);
+                        tempDyDt[con.from] -= q;
+                        
+                        double qMass = 0;
+                        if (bIncludeWQ)
+                        {
+                            if (vols[con.from]< virtuallyZero)
+                            {
+                                qMass = 0;
+                            }
+                            else 
+                            {
+                                qMass = q * vols[con.from + NhydraulicStates] / vols[con.from];//mass flux calculated as flow times mass / volume;
+                            }
+                            
+                            tempDyDt[con.from + NhydraulicStates] -= qMass;
+                        }
+
+                        
+                        if (con.bToFlowDivider)
+                        {
+                            this.qSplits[con.to] += q;//add flow to the right flow divider. 
+                            if (bIncludeWQ) this.qMassSplits[con.to] += qMass; 
+                        }
+                        else
+                        {
+                            if (con.to != System.Int32.MaxValue) //outlets are given MaxValue as magic number.
+                            {   
+                                tempDyDt[con.to] += q;
+                                if (bIncludeWQ) tempDyDt[con.to + NhydraulicStates] += qMass;
+
+                            }
+                        }
+                        if (con.bIsOutput)
+                        {
+                            con.accumFlow(q);//for calculating output flow as avereage of all solver steps. 
+                            if (bIncludeWQ) con.accumMassFlux(qMass);
+                        }                           
                     }
                 }
                 catch (Exception ex1)
                 {
                     Exception ex2 = new Exception("Time t=: " + t + " Error calculating flow: " + nodes[con.from].name + " to " + nodes[con.to].name + "   vol in from node=" + vols[con.from], ex1);
                     throw ex2;
-                }
+                }  
             }
 
-            tempDyDt = RungeKutta4.arrSum(tempDyDt, forcing);
+            foreach (FlowDivider fd in flowDividers)
+            {
+                //if (bIncludeWQ) throw new NotImplementedException("WQ not implemented for flow dividers yet");
+                int Ncons = fd.connections.Count;
+                double[] qs = new double[Ncons];
+                int[] stateVectorIndexes = new int[Ncons];
+                int i = 0;
+                foreach (FlowDividerConnection con in fd.connections)
+                {//calculate flow from all flow dividers. The flow to has been calculated above.                   
+                    qs[i] = con.calculateFlow(qSplits);
+                    if (con.to != System.Int32.MaxValue) //outlets are given MaxValue as magic number.
+                    {   
+                        tempDyDt[con.to] += qs[i];
+                        stateVectorIndexes[i] = con.to;
+                    }
+                    if (con.bIsOutput) con.accumFlow(qs[i]);//for calculating output flow as avereage of all solver steps. 
 
+                    i++;
+                }
+                if (bIncludeWQ)
+                {
+                    double sumx = qs.Sum();//total flow from divider.
+                    double qMassInTotal = qMassSplits[fd.index]+ fd.qMassFixed;
+                    for (int j = 0; j < Ncons; j++)
+                    {
+                        double qMassx;
+                        if (sumx < virtuallyZero)
+                        {
+                            qMassx = 0;
+                        }
+                        else
+                        {
+                            qMassx =   qMassInTotal * qs[j] / sumx;
+                        }
+                        
+                        
+                        tempDyDt[stateVectorIndexes[j] + NhydraulicStates] += qMassx;
+                        if (fd.connections[j].bIsOutput) fd.connections[j].accumMassFlux(qMassx);
+                    }
+                }
+                  
+            }       
+
+            tempDyDt = RungeKutta4.arrSum(tempDyDt, forcing);
             return tempDyDt;
         }
 
@@ -121,27 +218,44 @@ namespace DtuSmModels
             output.timeInSeconds.Add(t);
             foreach (SmOutput xout in output.dataCollection)
             {
-                if (xout.type == SmOutput.outputType.GlobalVolumen)
-                {
-                    xout.updateData(state.values.Sum());
-                }
-                else if (xout.type == SmOutput.outputType.linkFlowTimeSeries)
+                if (xout.type == SmOutput.OutputType.linkFlowTimeSeries)
                 {
                     //  xout.updateData(xout.con.calculateFlow(state.values));
-                    xout.updateData(xout.con.getFlow());
+                    xout.updateData(xout.con.retrieveMeanFlow());
                 }
-                else if (xout.type == SmOutput.outputType.outletFlowTimeSeries)
+                else if (xout.type == SmOutput.OutputType.outletFlowTimeSeries)
                 {
                     xout.updateData(xout.outletx.flow);
                 }
-                else if (xout.type == SmOutput.outputType.nodeVolume)
+                else if (xout.type == SmOutput.OutputType.nodeVolume)
                 {
                     xout.updateData(state.values[xout.nodex.index]);
                 }
+                else if (xout.type == SmOutput.OutputType.nodeWaterLevel)
+                {
+                    try
+                    {
+                        xout.updateData(xout.derived.calculate(state.values[xout.nodex.index]));
+                    }
+                    catch (Exception e)
+                    {
+                        throw new Exception("Error collecting derived WL output for node " + xout.name + ": " + e.Message + "\n The volume in the compartment was: " + state.values[xout.nodex.index]);
+                    }
+
+                }
+                else if (xout.type == SmOutput.OutputType.WQmassFlux)
+                {
+                    xout.updateData(xout.con.retrieveMeanMassFlux());
+                }
+                else if (xout.type == SmOutput.OutputType.GlobalVolumen)
+                {
+                    xout.updateData(state.values.Sum());
+                }               
                 else
                 {
                     throw new Exception("Error collecting output");
                 }
+
             }
         }
 
@@ -166,10 +280,32 @@ namespace DtuSmModels
                 double[] forcingVector = new double[state.values.Length];
                 foreach (Catchment cat in catchments)
                 {
-                    forcingVector[((Compartment) cat.node).index] = cat.getNextFlowInM3PrS();
+                    if (cat.node.bHasVolume)
+                    {
+                        forcingVector[cat.node.index] += cat.getNextFlowInM3PrS();
+                        if (cat.bHasAdditionalFlow)
+                        {
+                            forcingVector[cat.node.index] += cat.qAdd;
+                            if (bIncludeWQ)
+                            {
+                                forcingVector[cat.node.index + NhydraulicStates] += cat.qAdd * cat.concIn_qAdd;// can reduce computational time by only calculating this flux in the catchment whenever flow or conc is changed.
+                            }
+                        }
+                    }
+                    else
+                    {
+                        ((FlowDivider)cat.node).qFixed = cat.getNextFlowInM3PrS();//WARNING -TODO:  This means flow dividers only work with a sinlge catchment.
+                        if (cat.bHasAdditionalFlow)
+                        {
+                            ((FlowDivider)cat.node).qFixed += cat.qAdd;
+                            if (bIncludeWQ) ((FlowDivider)cat.node).qMassFixed = cat.qAdd * cat.concIn_qAdd;//WARNING -TODO:  This means flow dividers only work with a sinlge catchment
+                        }
+                    }
+
                 }
 
                 modelStep(myconst.DT, forcingVector);
+
                 collectOutputData();
             }
         }
@@ -177,25 +313,7 @@ namespace DtuSmModels
         public void initializeFromFile(string parameterFileFullPath)
         {
             string[,] paramTable = getParameterTableFromFile(parameterFileFullPath);
-            this.nodes = instantiateNodes(paramTable);
-            this.connections = getConnections(paramTable);
-            this.catchments = getCatchments(paramTable);
-            lengthOfStateVector = ((Compartment) nodes[0]).totalNumberOfCompartments();
-
-            this.state = new StateVector();
-            this.state.values = new double[lengthOfStateVector];
-            this.dydt = new double[lengthOfStateVector];
-            // Connection.state = this.state;
-            var xioutlets = new List<int>();
-            foreach (Node n in nodes)
-            {
-                if (n is Outlet) xioutlets.Add(n.index);
-            }
-
-            this.iOutlets = xioutlets.ToArray();
-
-
-            this.mySolver = new RungeKutta4(this);
+            createModelInstance(paramTable);
 
             if (logFile != null)
             {
@@ -204,6 +322,142 @@ namespace DtuSmModels
                 logFile.WriteLine("connections: " + connections.Count());
                 logFile.WriteLine("catchments: " + catchments.Count());
             }
+        }
+
+        //public string[,] initializeFromFileAndReturnParamTable(string parameterFileFullPath)
+        //{
+        //    string[,] paramTable = getParameterTableFromFile(parameterFileFullPath);
+        //    createModelInstance(paramTable);
+        //    return paramTable;
+
+        //}
+
+
+        public void createModelInstance(string[,] paramTable)
+        {
+            this.flowDividers = new List<FlowDivider>();
+            this.nodes = instantiateNodes(paramTable, this.flowDividers);
+            this.connections = getConnections(paramTable);
+            this.catchments = getCatchments(paramTable);
+
+
+            lengthOfStateVector = ((Compartment)nodes[0]).totalNumberOfCompartments();
+
+            this.state = new StateVector();
+            this.state.values = new double[lengthOfStateVector];
+          // this.dydt = new double[lengthOfStateVector]; //TODO - is it even used?
+            this.qSplits = new double[flowDividers.Count];
+            this.qMassSplits = new double[flowDividers.Count];
+            // Connection.state = this.state;
+            var xioutlets = new List<int>();
+            foreach (Node n in nodes)
+            {
+                if (n is Outlet) xioutlets.Add(n.index);
+            }
+
+            this.iOutlets = xioutlets.ToArray();
+            this.mySolver = new RungeKutta4adaptive(this);
+
+
+            if (!ensembleOutputOnly(paramTable)) addOutputVariablesFromParameters(paramTable);
+        }
+
+        private bool ensembleOutputOnly(string[,] paramTable)
+        {
+            bool bOnlyEnsembleOutput = false;
+            bool bInEnsembleSection = false;
+
+            for (int i = 0; i < paramTable.GetLength(0); i++)
+            {
+                if (paramTable[i, 0] == "[Ensemble]") bInEnsembleSection = true;
+
+                if (bInEnsembleSection)
+                {
+                    if (paramTable[i, 0] == "bEnsembleRun")
+                    {
+                        if (paramTable[i, 2] == "0") return false;
+                    }
+                    if (paramTable[i, 0] == "bSingleModelsOutput")
+                    {
+                        if (paramTable[i, 2] == "1") return false;
+                    }
+                }
+            }
+
+            return bOnlyEnsembleOutput;
+        }
+
+        private void addOutputVariablesFromParameters(string[,] paramTable)
+        {
+            {
+                bool bInOutputSection = false;
+
+                for (int i = 0; i < paramTable.GetLength(0); i++)
+                {
+                    if (paramTable[i, 0] == "[Output]") bInOutputSection = true;
+
+                    if (bInOutputSection)
+                    {
+                        if (paramTable[i, 0] == "[EndSect]") bInOutputSection = false;
+                        else
+                        {
+
+                            while (paramTable[i, 0] == "<output>")
+                            {
+
+
+                                switch (paramTable[i, 1])
+                                {
+                                    case "Flow":
+                                        addOutputVariable(paramTable[i, 2], paramTable[i, 3], paramTable[i, 4]);
+                                        break;
+                                    case "Vol":
+                                        addOutputVariable(paramTable[i, 2], SmOutput.OutputType.nodeVolume);
+                                        break;
+                                    case "outletFlow":
+                                        addOutputVariable(paramTable[i, 2]);
+                                        break;
+                                    case "GlobalVolume":
+                                        addOutputVariable(SmOutput.OutputType.GlobalVolumen);
+                                        break;
+                                    case "NodeWL":
+                                        SmOutput xout = new SmOutput();
+                                        xout.type = SmOutput.OutputType.nodeWaterLevel;
+                                        xout.name = paramTable[i, 4];
+                                        xout.nodex = getNode(paramTable[i, 2]);
+                                        xout.derived = new DerivedValue(paramTable[i, 5]);
+                                        output.addNewDataSeries(xout);
+                                        break;
+                                    default:
+                                        throw new NotImplementedException("Unknown connection type: " + paramTable[i, 1]);
+                                }
+
+                                i++;
+                            }
+                        }
+
+                    }
+                }
+            }
+
+        }
+
+        public void setAdditionalFlowPerUnit(double flowPrUnit, double concentration, int profileNumber)
+        {//profileNumber is an integer from 1 and up that decides which catchments is effected by the method. Flow is in m3/s and conc in kg/m3 (=g/l)
+           
+
+            foreach (Catchment cat in catchments)
+            {
+                if (cat.bHasAdditionalFlow)
+                {
+                    if(cat.profileIndex == profileNumber)
+                    {
+                        cat.qAdd = flowPrUnit * cat.numberOfUnits;
+                        cat.concIn_qAdd = concentration;
+                    }
+                }
+            }
+
         }
 
         public void setParameter(double[] newParameters)
@@ -297,32 +551,48 @@ namespace DtuSmModels
                             bInSurfaceModelsSection = false;
                             i++;
                         }
-
-                        while (paramTable[i, 0] == "<SurfMod>")
+                        try
                         {
-                            switch (paramTable[i, 2])
+                            while (paramTable[i, 0] == "<SurfMod>")
                             {
-                                case "TA1":
-                                    TA1 taCatch = new TA1(getNode(paramTable[i, 1]), paramTable[i, 3]);
-                                    taCatch.setRainfallData(raindata);
-                                    xcatchments.Add(taCatch);
-                                    break;
-                                case "LinResSurf2":
-                                    LinResSurf2 LrSurf = new LinResSurf2(getNode(paramTable[i, 1]), paramTable[i, 3]);
-                                    LrSurf.setRainfallData(raindata);
-                                    xcatchments.Add(LrSurf);
-                                    break;
-                                case "PlainArea":
-                                    PlainArea plAr = new PlainArea(getNode(paramTable[i, 1]), paramTable[i, 3]);
-                                    plAr.setRainfallData(raindata);
-                                    xcatchments.Add(plAr);
-                                    break;
-                                default:
-                                    throw new Exception("Error constructing surface model. Unknown SurfModel type: " + paramTable[i, 2]);
-                            }
+                                Catchment catx;
+                                switch (paramTable[i, 2])
+                                {
+                                    case "TA1":
+                                        catx = new TA1(getNodeOrDivider(paramTable[i, 1]), paramTable[i, 3]);
+                                        break;
+                                    case "LinResSurf2":
+                                        catx = new LinResSurf2(getNodeOrDivider(paramTable[i, 1]), paramTable[i, 3]);
+                                        break;
+                                    case "PlainArea":
+                                        catx = new PlainArea(getNodeOrDivider(paramTable[i, 1]), paramTable[i, 3]);
+                                        break;
+                                    default:
+                                        throw new Exception("Error constructing surface model. Unknown SurfModel type: " + paramTable[i, 2]);
+                                }
+                                catx.setRainfallData(raindata);
 
-                            i++;
+                                if(paramTable[i, 4] != null)
+                                {
+                                    catx.bHasAdditionalFlow = true;
+
+                                    System.Globalization.NumberFormatInfo provider = new System.Globalization.NumberFormatInfo();
+                                    provider.NumberDecimalSeparator = ".";
+                                    string[] split = paramTable[i, 4].Split(new Char[] { ' ', '\t', '=', ',', '(', ')', ';' }, StringSplitOptions.RemoveEmptyEntries);
+                                    catx.numberOfUnits = Convert.ToDouble(split[0], provider);
+                                    catx.profileIndex = Convert.ToInt32(split[1], provider);
+
+                                }
+                                xcatchments.Add(catx);
+                                i++;
+                            }
                         }
+
+                        catch (Exception e)
+                        {
+                            throw new Exception("Error constructing surface model: " + e.Message);
+                        }
+
                     }
 
                     if (paramTable[i, 0] == "[EndSect]")
@@ -351,45 +621,75 @@ namespace DtuSmModels
                         if (paramTable[i, 0] == "[EndSect]") bInHydraulicSection = false;
                         else
                         {
-                            //instantiate all compartments
+                            //instantiate all connections
                             if (paramTable[i, 0] == "<name>")
                             {
+                                if (paramTable[i+1, 1] == "drainage")
                                 {
-                                    Node fromComp = getNode(paramTable[i, 1]);
+                                    {
+                                        Node fromComp = getNode(paramTable[i, 1]);
 
+                                        i = i + 2;
+                                        while (paramTable[i, 0] == "<connection>")
+                                        {
+                                            Node toComp = getNodeOrDivider(paramTable[i, 1]);
+                                            Connection conx;
+                                            switch (paramTable[i, 2])
+                                            {
+                                                case "LinRes":
+                                                    conx = new LinRes(fromComp.index, toComp.index, paramTable[i, 3]);
+                                                    break;
+                                                case "LinResWithMax":
+                                                    conx = new LinResWithMax(fromComp.index, toComp.index, paramTable[i, 3]);
+                                                    break;
+                                                case "PieceWiseLinRes":
+                                                    conx = (new PieceWiseLinRes(fromComp.index, toComp.index, paramTable[i, 3]));
+                                                     break;
+                                                case "LinResWithMaxAndBackWater":
+                                                    conx = (new LinResWithMaxAndBackWater(fromComp.index, toComp.index, paramTable[i, 3]));
+                                                    break;
+                                                case "SpillingVolume":
+                                                    conx = (new SpillingVolume(fromComp.index, toComp.index, paramTable[i, 3]));
+                                                    break;
+                                                case "UnitHydro":
+                                                    conx = (new UnitHydrograph(fromComp.index, toComp.index, paramTable[i, 3], this));
+                                                    break;
+                                                case "TriggeredPWLinRes":
+                                                    conx = (new TriggeredPWLinRes(fromComp.index, toComp.index, paramTable[i, 3]));
+                                                   break;
+                                                case "PwlGradientBasedFlow":
+                                                    conx = (new PwlGradientBasedFlow(fromComp.index, toComp.index, paramTable[i, 3]));
+                                                     break;
+                                                default:
+                                                    throw new NotImplementedException("Unknown connection type: " + paramTable[i, 2]);
+                                            }
+                                            
+                                            if(toComp is FlowDivider)
+                                            {
+                                                conx.bToFlowDivider = true;
+                                            }
+                                            
+
+                                            connections.Add(conx);
+
+                                            i++;
+                                        }
+                                    }
+                                }
+                                else if (paramTable[i + 1, 1] == "splitter")
+                                {
+                                    FlowDivider div = getFlowDivider(paramTable[i, 1]);
                                     i = i + 2;
                                     while (paramTable[i, 0] == "<connection>")
                                     {
                                         Node toComp = getNode(paramTable[i, 1]);
-                                        switch (paramTable[i, 2])
-                                        {
-                                            case "LinRes":
-                                                connections.Add(new LinRes(fromComp.index, toComp.index, paramTable[i, 3]));
-                                                break;
-                                            case "LinResWithMax":
-                                                connections.Add(new LinResWithMax(fromComp.index, toComp.index, paramTable[i, 3]));
-                                                break;
-                                            case "PieceWiseLinRes":
-                                                connections.Add(new PieceWiseLinRes(fromComp.index, toComp.index, paramTable[i, 3]));
-                                                break;
-                                            case "LinResWithMaxAndBackWater":
-                                                connections.Add(new LinResWithMaxAndBackWater(fromComp.index, toComp.index, paramTable[i, 3]));
-                                                break;
-                                            case "SpillingVolume":
-                                                connections.Add(new SpillingVolume(fromComp.index, toComp.index, paramTable[i, 3]));
-                                                break;
-                                            case "UnitHydro":
-                                                connections.Add(new UnitHydrograph(fromComp.index, toComp.index, paramTable[i, 3], this));
-                                                break;
-                                            case "TriggeredPWLinRes":
-                                                connections.Add(new TriggeredPWLinRes(fromComp.index, toComp.index, paramTable[i, 3]));
-                                                break;
-                                            default:
-                                                throw new NotImplementedException("Unknown connection type: " + paramTable[i, 2]);
-                                        }
+                                        FlowDividerConnection divCon = new FlowDividerConnection(div.index, toComp.index, paramTable[i, 3]);
+                                        divCon.flowDiv = div;
+                                        div.connections.Add(divCon);
 
-                                        i++;
-                                    }
+                                        connections.Add(divCon);
+                                        i++;                                    
+                                    }                                    
                                 }
                             }
                         }
@@ -408,9 +708,9 @@ namespace DtuSmModels
             {
                 if (con.GetType() == typeof(PieceWiseLinRes))
                 {
-                    for (int i = 0; i < ((PieceWiseLinRes) con).slopes.Length - 1; i++)
+                    for (int i = 0; i < ((PieceWiseLinRes)con).slopes.Length - 1; i++)
                     {
-                        if (Double.IsNaN(((PieceWiseLinRes) con).slopes[i]))
+                        if (Double.IsNaN(((PieceWiseLinRes)con).slopes[i]))
                         {
                             throw new Exception("Error in slopes in PieceWiseLinRes: " + nodes[con.from].name + " " + nodes[con.to].name + " Migth be due to to identical volume data points. ");
                         }
@@ -422,7 +722,7 @@ namespace DtuSmModels
             return bNoErrors;
         }
 
-        private Node getNode(string v)
+        public Node getNode(string v)
         {
             foreach (var comp in nodes)
             {
@@ -432,7 +732,32 @@ namespace DtuSmModels
             throw new Exception("No compartment called " + v);
         }
 
-        private static List<Node> instantiateNodes(string[,] paramTable)
+
+        public Node getNodeOrDivider(string v)
+        {
+            foreach (var comp in nodes)
+            {
+                if (comp.name == v) return comp;
+            }
+            foreach (var div in this.flowDividers)
+            {
+                if (div.name == v) return div;
+            }
+
+            throw new Exception("No node or divider called " + v);
+        }
+
+        private FlowDivider getFlowDivider(string v)
+        {
+            foreach (var div in flowDividers)
+            {
+                if (div.name == v) return div;
+            }
+
+            throw new Exception("No FlowDivider called " + v);
+        }
+
+        private static List<Node> instantiateNodes(string[,] paramTable, List<FlowDivider> flowDividers)
         {
             var Nodes = new List<Node>();
             bool bInHydraulicSection = false;
@@ -447,22 +772,25 @@ namespace DtuSmModels
                     else
                     {
                         //instantiate all compartments
-                        if (paramTable[i, 0] == "<name>")
+                        if (paramTable[i, 0] == "<name>" && paramTable[i + 1, 0] == "<type>")
                         {
                             //if (paramTable[i + 1, 0] == "<type>" && paramTable[i + 1, 1] == "drainage")
-                            if (paramTable[i + 1, 0] == "<type>" && paramTable[i + 1, 1] == DrainageCompartment.tag)
+                            switch (paramTable[i + 1, 1])
                             {
-                                Nodes.Add(new DrainageCompartment(paramTable[i, 1]));
-                            }
-
-                            if (paramTable[i + 1, 0] == "<type>" && paramTable[i + 1, 1] == Surface1Compartment.tag)
-                            {
-                                Nodes.Add(new Surface1Compartment(paramTable[i, 1]));
-                            }
-
-                            if (paramTable[i + 1, 0] == "<type>" && paramTable[i + 1, 1] == Outlet.tag)
-                            {
-                                Nodes.Add(new Outlet(paramTable[i, 1]));
+                                case DrainageCompartment.tag:
+                                    Nodes.Add(new DrainageCompartment(paramTable[i, 1]));
+                                    break;
+                                case Surface1Compartment.tag:
+                                    Nodes.Add(new Surface1Compartment(paramTable[i, 1]));
+                                    break;
+                                case Outlet.tag:
+                                    Nodes.Add(new Outlet(paramTable[i, 1]));
+                                    break;
+                                case "splitter":
+                                    flowDividers.Add(new FlowDivider(paramTable[i, 1]));
+                                    break;
+                                default:
+                                    throw new Exception("Wrong type in prm");                                  
                             }
                         }
                     }
@@ -472,7 +800,7 @@ namespace DtuSmModels
             return Nodes;
         }
 
-        private string[,] getParameterTableFromFile(string parameterFileFullPath)
+        static public string[,] getParameterTableFromFile(string parameterFileFullPath)
         {
             const int MaxNumberOfColumnsInFile = 20; //
 
@@ -495,7 +823,7 @@ namespace DtuSmModels
             {
                 bool bIsEmpty = true;
 
-                string[] split = paramLines[i].Split(new Char[] {' ', '\t', '='}, StringSplitOptions.RemoveEmptyEntries);
+                string[] split = paramLines[i].Split(new Char[] { ' ', '\t', '=','+' }, StringSplitOptions.RemoveEmptyEntries);
                 int column = 0;
                 foreach (string s in split)
                 {
@@ -522,20 +850,53 @@ namespace DtuSmModels
             logFile.WriteLine("first line");
         }
 
+        public bool addWQOutputVariable(string fromNode, string toNode, string name)
+        {
+            addOutputVariable(fromNode, toNode, name);
+            int n = output.dataCollection.Count;
+            output.dataCollection[n-1].type = SmOutput.OutputType.WQmassFlux;
+            return true;
+        }
+
         public bool addOutputVariable(string fromNode, string toNode, string name)
         {
             bool bsuccess = false;
-
-            int fromIndex = getNode(fromNode).index;
-            int toIndex = getNode(toNode).index;
+            Node N1 = getNodeOrDivider(fromNode);
+            Node N2 = getNodeOrDivider(toNode);
             // string toName = getNode(toNode).name;
             //problem at outlets for samme index - lav om. 
+
+            int fromIndex = N1.index;
+            int toIndex = N2.index;
+            bool bFromDivider = false;
+            bool bToDivder = false;
+            if (N1 is FlowDivider) bFromDivider = true;
+            if (N2 is FlowDivider) bToDivder = true;
+
             foreach (Connection con in connections)
             {
+
                 if (con.from == fromIndex && con.to == toIndex)
                 {
+                    //adapt to dividers
+                    if (bFromDivider)
+                    {
+                        if( !(flowDividers[fromIndex].name == fromNode))
+                        {
+                            continue;
+                        } 
+                    }
+                    if (bToDivder)
+                    {
+                        if (!(flowDividers[toIndex].name == toNode))
+                        {
+                            continue;
+                        }
+                    }
+                    //end adapt to dividers
                     SmOutput xout = new SmOutput();
                     xout.name = name;
+                    con.bIsOutput = true;
                     xout.con = con;
                     output.addNewDataSeries(xout);
                     bsuccess = true;
@@ -545,7 +906,8 @@ namespace DtuSmModels
             return bsuccess;
         }
 
-        public bool addOutputVariable(SmOutput.outputType type)
+
+        public bool addOutputVariable(SmOutput.OutputType type)
         {
             bool bsuccess = false;
 
@@ -557,18 +919,33 @@ namespace DtuSmModels
             return bsuccess;
         }
 
-        public bool addOutputVariable(string nodeName, SmOutput.outputType type)
+        public bool addOutputVariable(string nodeName, int outputTypeNumber)
+        { bool success = false;
+            
+            switch(outputTypeNumber)
+            {
+                    case (int)SmOutput.OutputType.nodeVolume:
+
+                        success = addOutputVariable(nodeName, SmOutput.OutputType.nodeVolume );
+                        break;
+                default:
+                    break;
+            }
+            return success;
+        }
+
+        public bool addOutputVariable(string nodeName, SmOutput.OutputType type)
         {
             bool bsuccess = false;
 
-            if (type != SmOutput.outputType.nodeVolume) throw new Exception("Unsupported output type for node " + nodeName);
+            if (type != SmOutput.OutputType.nodeVolume) throw new Exception("Unsupported output type for node " + nodeName);
 
             foreach (Node _node in nodes)
             {
                 if (_node.name == nodeName)
                 {
                     SmOutput xout = new SmOutput();
-                    xout.type = SmOutput.outputType.nodeVolume;
+                    xout.type = SmOutput.OutputType.nodeVolume;
                     xout.name = "Volume in " + nodeName;
                     xout.nodex = _node;
 
@@ -576,7 +953,6 @@ namespace DtuSmModels
                     bsuccess = true;
                 }
             }
-
 
             if (!bsuccess) throw new Exception("could not find output variable " + nodeName);
 
@@ -586,30 +962,19 @@ namespace DtuSmModels
         public bool addOutputVariable(string outletName)
         {
             bool bsuccess = false;
-
             foreach (int i in iOutlets)
             {
                 if (nodes[i].name == outletName)
                 {
                     SmOutput xout = new SmOutput();
-                    xout.type = SmOutput.outputType.outletFlowTimeSeries;
+                    xout.type = SmOutput.OutputType.outletFlowTimeSeries;
                     xout.name = outletName;
-                    //jeg er i gang her MB og alle andre steder relateret til output. :
-                    foreach (Node _node in nodes)
-                    {
-                        if (_node.name == outletName) //not robust - add check for type.
-                        {
-                            xout.outletx = (Outlet) _node;
-                        }
-                    }
-
+                    xout.outletx = (Outlet)nodes[i];
                     output.addNewDataSeries(xout);
                     bsuccess = true;
                 }
             }
-
             if (!bsuccess) throw new Exception("could not find output variable " + outletName);
-
             return bsuccess;
         }
 
@@ -755,8 +1120,8 @@ namespace DtuSmModels
             {
                 if (catx is LinResSurf2)
                 {
-                    surfState[i] = ((LinResSurf2) catx).state[0];
-                    surfState[i + 1] = ((LinResSurf2) catx).state[1];
+                    surfState[i] = ((LinResSurf2)catx).state[0];
+                    surfState[i + 1] = ((LinResSurf2)catx).state[1];
                     i += 2;
                 }
             }
@@ -771,8 +1136,8 @@ namespace DtuSmModels
                 int i = 0;
                 if (catx is LinResSurf2)
                 {
-                    ((LinResSurf2) catx).state[0] = newStates[i];
-                    ((LinResSurf2) catx).state[1] = newStates[i + 1];
+                    ((LinResSurf2)catx).state[0] = newStates[i];
+                    ((LinResSurf2)catx).state[1] = newStates[i + 1];
                     i += 2; // 
                 }
                 else

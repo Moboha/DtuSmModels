@@ -25,18 +25,28 @@ namespace DtuSmModels
 
         public override double[] getParameterArray()
         {
-            throw new NotImplementedException();
+
+
+            double[] xparams = new double[1];
+            xparams[0] = this.timeConstant;
+            return xparams;
+            
         }
 
 
         public override int setParameterArray(double[] newParameters, int i)
         {
-            throw new NotImplementedException("asdfasdfsaaddd d");
+            int N = 1;
+            double[] xx = new double[N];
+            Array.Copy(newParameters, i, xx, 0, N);
+            setParameters(xx);
+            return N;
         }
 
         public override void setParameters(double[] specificParameters)
         {
-            throw new NotImplementedException();
+            this.timeConstant = specificParameters[0];
+            if (this.timeConstant < 0.00000000000001) this.timeConstant = 0.00000000000001;//simply to avid non-positive values
         }
 
         public override string typeTag()

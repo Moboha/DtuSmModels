@@ -45,10 +45,10 @@ namespace DtuSmModels
             for (int i = 0; i < Np - 1; i++)
             {
 
-                if ((qs[i+1] / xStarts[i+1]) > 0.06)
-                {                       
-                    throw new Exception("flow to volume ratio is not allowed to superseed 0.06s-1. In connection between node nr. " + this.from.ToString() + "  and " + this.to.ToString() + "the problematic volume and flow point is: "  + xStarts[i+1].ToString() + " " + qs[i+1].ToString());
-                }
+//                if ((qs[i+1] / xStarts[i+1]) > 0.06)
+//                {                       
+//                    throw new Exception("flow to volume ratio is not allowed to superseed 0.06s-1. In connection between node nr. " + this.from.ToString() + "  and " + this.to.ToString() + "the problematic volume and flow point is: "  + xStarts[i+1].ToString() + " " + qs[i+1].ToString());
+//                }
 
                 slopes[i] = (qs[i + 1] - qs[i]) / (xStarts[i + 1] - xStarts[i]);
                 intersects[i] = qs[i] - slopes[i] * xStarts[i];

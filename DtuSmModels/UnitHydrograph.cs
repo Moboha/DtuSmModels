@@ -19,8 +19,10 @@ namespace DtuSmModels
         public UnitHydrograph(int from, int to, string parameters, MainModel mymain) : base(from, to, parameters)
         {
 
-            NumberFormatInfo provider = new NumberFormatInfo();
-            provider.NumberDecimalSeparator = ".";
+            NumberFormatInfo provider = new NumberFormatInfo
+            {
+                NumberDecimalSeparator = "."
+            };
             string[] split = parameters.Split(new Char[] { ' ', '\t', '=', ',', '(', ')', ';' }, StringSplitOptions.RemoveEmptyEntries);
             int Nunits = split.Length;
             this.inflowFiFo = new Queue<double>();
@@ -59,12 +61,7 @@ namespace DtuSmModels
                 t_current = mymain.t;
 
             }
-            else
-            {
 
-                //do nothing
-                double affaldtobreakon = 0;
-            }
             flow = flowOut;     
          return flowOut;
 

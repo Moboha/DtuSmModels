@@ -119,8 +119,13 @@ namespace DtuSmModels
                         
             double k = Convert.ToInt32(areaAndTc[1]) * 60 / 4;;
             this.depthToVolume = areaAndTc[0] / 1000 ;
+            if (depthToVolume < 0.0000001) depthToVolume = 0.0000001;//simply to avid non-positive values
+            if (k < 0.0000000000001) k = 0.0000000000001;//simply to avid non-positive values
+
             fstep = System.Math.Exp(-DtuSmModels.myconst.DT / k);
             f1_2 = fstep * DtuSmModels.myconst.DT / k;
+
+            
 
         }
 

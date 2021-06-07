@@ -17,7 +17,7 @@ namespace DtuSmModels
              
         //output specification
         bool addOutputVariable(string outletName);
-        bool addOutputVariable(SmOutput.outputType type);
+        bool addOutputVariable(SmOutput.OutputType type);
         bool addOutputVariable(string fromNode, string toNode, string name);
         void setOutFile(string filename);
         void releaseOutFile();

@@ -22,7 +22,6 @@ namespace DtuSmModels
         {
             dataCollection.Add(outx);
             timeInSeconds.Clear();
-
         }
 
         public SmOutput[] getData()

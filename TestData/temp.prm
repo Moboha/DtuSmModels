@@ -1,0 +1,30 @@
+[HydraulicModel]
+	************************************
+	<name>	SM1
+	<type>   drainage
+	<connection> SM2  PieceWiseLinRes (0,0;1000,1.4)
+	************************************
+	<name>	SM2
+	<type>   drainage
+	<connection> SM3  LinRes 0.0001
+	************************************
+	<name>	SM3
+	<type>   drainage
+	<connection> SM4  LinRes 0.0001
+	************************************
+	<name>	SM4
+	<type>   drainage
+	<connection> outlet1  PieceWiseLinRes (0,0;1000,1.4)
+	************************************
+	<name>	outlet1
+	<type>   outlet
+	************************************
+[EndSect]
+/>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+/>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+[Runoff]
+[SurfaceModels]
+	<SurfMod>    SM1  TA1 (7000,14)
+	<SurfMod>    SM3  TA1 (2000,30)
+[EndSect]
+[EndSect]

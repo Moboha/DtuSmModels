@@ -6,6 +6,11 @@
         protected RainfallData rain;
         protected int index;
 
+        internal double qAdd; //additional inflow
+        internal double concIn_qAdd;
+        internal double numberOfUnits;
+        internal int profileIndex;
+        internal bool bHasAdditionalFlow;
         public abstract double getNextFlowInM3PrS();
         public abstract string typeTag();
 

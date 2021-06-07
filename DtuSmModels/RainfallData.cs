@@ -1,8 +1,8 @@
 ﻿namespace DtuSmModels
 {
-    internal class RainfallData
+    public class RainfallData
     {
-        internal double[] data;
+        public double[] data;
 
         public RainfallData() { }
 

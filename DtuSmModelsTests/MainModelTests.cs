@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics; 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace DtuSmModels.Tests
@@ -20,6 +21,8 @@ namespace DtuSmModels.Tests
         /// <summary>
         /// 
         /// </summary>
+        /// 
+
         [TestMethod]
         public void initializeFromFileTest()
         {
@@ -33,7 +36,6 @@ namespace DtuSmModels.Tests
 
             model.saveModelParameters(TestDataFolder + "\\" + "autoWrittenPrm.Prm");
         }
-
         [TestMethod]
         public void modelStepTest()
         {
@@ -84,7 +86,8 @@ namespace DtuSmModels.Tests
             //foreach (var x in rainfall) model.stepModelWithSetRain();
             model.addOutputVariable("aaaSM2", "aaaSM3", "");
             model.addOutputVariable("bbbSM6", "bbbSM7", "");
-            model.addOutputVariable("bbbSM6", SmOutput.outputType.nodeVolume);
+            model.addOutputVariable("bbbSM6", SmOutput.OutputType.nodeVolume);
+            model.addOutputVariable("outlet1");
 
             model.setRainDataForAllCatchments(rainfall);
             model.runForOneMinuteRainInput();
@@ -99,8 +102,68 @@ namespace DtuSmModels.Tests
 
         [TestMethod]
         public void runForOneMinuteSingleRainInputTest2()
+        {// tager 53ms før wq.
+            //string parameterFile = "SmallDiverseModel.prm";
+            string parameterFile = "Model2.prm";
+
+            MainModel model = new MainModel();
+
+            model.initializeFromFile(TestDataFolder + "\\" + parameterFile);
+          
+
+            double[] rainfall = new double[120];
+            rainfall[5] = 5; //5 mm of rainfall in one minute.
+
+            model.setRainDataForAllCatchments(rainfall);
+            double[] sv = model.state.values;
+            sv[1] = 998; sv[3] = 998;
+
+            model.setInitialCond(sv);
+
+            model.runForOneMinuteRainInput();
+        }
+
+
+        [TestMethod]
+        public void runForOneMinuteSingleRainInputTest3()
         {
-            string parameterFile = "SmallDiverseModel.prm";
+            string parameterFile = "SplitterTest.prm";
+            MainModel model = new MainModel();
+
+            model.initializeFromFile(TestDataFolder + "\\" + parameterFile);
+            //model.initializeFromFile("H:\\SyncPC\\MBworkspace\\Projects\\KajerodSurrogate\\KajeSM\\SMmodels\\Model1\\FirstModel2.prm");
+
+            model.addOutputVariable("outlet1");
+            model.addOutputVariable("outlet2");
+            model.addOutputVariable("SM1", "Splitter1", "SM1toSplitter");
+            model.addOutputVariable("SM2", "Splitter1", "SM2toSplitter");
+            model.addOutputVariable("Splitter1", "SM3","SplitterToSM3");
+            model.addOutputVariable("Splitter1", "SM4", "SplitterToSM4");
+            //model.addOutputVariable("Bas5up1", "Collector5", "B05SA00_B07A090_l1");
+            double[] rainfall = new double[120];
+            rainfall[5] = 5; //5 mm of rainfall in one minute.
+
+            model.setRainDataForAllCatchments(rainfall);
+            model.runForOneMinuteRainInput();
+            
+            for (int i = 0; i < model.output.dataCollection.Count(); i++)
+            {
+                double[] xi = model.output.dataCollection[i].data.ToArray();
+                double accxi = 0;
+                foreach (double d in xi) accxi += d;
+                Debug.WriteLine(model.output.dataCollection[i].name + ": " +  accxi *60 + " ");
+            }
+            
+
+            //foreach (double x in model.output.dataCollection[0].data) Debug.Write(x + " ");
+           
+
+        }
+
+        [TestMethod]
+        public void testGradientBasedFlow()
+        {
+            string parameterFile = "GradientBasedFlowTest.prm";
             MainModel model = new MainModel();
 
             model.initializeFromFile(TestDataFolder + "\\" + parameterFile);
@@ -109,6 +172,29 @@ namespace DtuSmModels.Tests
 
             model.setRainDataForAllCatchments(rainfall);
             model.runForOneMinuteRainInput();
+            
+            List<Connection> cons = model.getConnections();
+            foreach (Connection item in cons)
+            {
+                if(item.typeTag() == "PwlGradientBasedFlow")
+                { bool bSuccess = true;
+                    double[] xx = item.getParameterArray();
+                    item.setParameters(xx);
+                    double[] yy = item.getParameterArray();
+                    for (int i = 0; i < xx.Length; i++)
+                    {   if(xx[i] != yy[i])
+                        {
+                            bSuccess = false;
+                            break;
+                        }
+                    }
+                    Assert.IsTrue(bSuccess);
+
+                }
+            }
+
+
+
         }
 
         [TestMethod]
@@ -131,7 +217,8 @@ namespace DtuSmModels.Tests
         [TestMethod]
         public void forecastTest2()
         {
-            string parameterFile = "LinResSurfaceModelTest.prm";
+            //string parameterFile = "LinResSurfaceModelTest.prm";
+            string parameterFile = "OutputAndEnsembleTest.prm";
             MainModel model = new MainModel();
 
             model.initializeFromFile(TestDataFolder + "\\" + parameterFile);
@@ -245,6 +332,38 @@ namespace DtuSmModels.Tests
 
 
             Assert.IsFalse(false);
+        }
+
+        [TestMethod]
+        public void testAdditionalInflows()
+        {
+            string parameterFile = "SmallDiverseModel2.PRM";
+            
+            MainModel model = new MainModel();
+
+            //model.initializeFromFile(TestDataFolder + "\\" + parameterFile);
+            model.initializeFromFile("H:\\SyncPC\\MBworkspace\\Projects\\KajerodSurrogate\\KajeSM\\SMmodels\\Model1\\FirstModel2.prm");
+            List <Connection> conns = model.getConnections();
+            
+            double[] rainfall = new double[12000];
+            rainfall[5] = 1; //50 mm of rainfall in one minute.
+            model.includeWQcalculation();
+            model.setAdditionalFlowPerUnit(0.01, 0.005, 1);
+            //model.setAdditionalFlowPerUnit(0.01, 0.005, 2);
+            model.setRainDataForAllCatchments(rainfall);
+
+            //model.addWQOutputVariable("SM4", "outlet1", "blabla WQ");
+            //model.addWQOutputVariable("SM1", "SM2", "blabla WQ");
+            //model.addWQOutputVariable("SM2", "Splitter1", "blabla WQ");
+            //model.addOutputVariable("SM2", "Splitter1", "blabla ");
+            //model.addWQOutputVariable("Splitter1", "outlet1", "blabla WQ");
+            
+            model.runForOneMinuteRainInput();
+
+           SmOutput[] xx = model.output.getData();
+            foreach (double x in model.state.values) Debug.Write(x + " ");
+            Console.WriteLine("\ndata:");
+
         }
     }
 }

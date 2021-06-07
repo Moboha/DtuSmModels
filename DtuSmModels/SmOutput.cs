@@ -12,22 +12,38 @@ namespace DtuSmModels
         public Connection con;
         public Outlet outletx;
         public Node nodex;//node index
-        public enum outputType
+        public DerivedValue derived;
+        public enum OutputType
         {
             linkFlowTimeSeries = 0,
             nodeVolume = 1,
             GlobalVolumen = 2,
             outletFlowTimeSeries = 3,
-            //data series
+            nodeWaterLevel = 4,
+            WQmassFlux = 5,
+            //WQnodeConc = 6,//data series
             //accumulated only
             //
         }
 
+        public enum StatType
+        {
+            deterministic = 0,
+            mean = 1,
+            std = 2,
+            min = 3,
+            max = 4,
+            median = 5,
+            accumulated = 6,
+            //...
+        }
 
 
         public List<double> data;
-        public double accumulated;
-        public outputType type;
+        //public double accumulated;
+        public OutputType type;
+
+        public StatType statType = StatType.deterministic;
 
         public SmOutput()
         {
@@ -39,7 +55,7 @@ namespace DtuSmModels
             data.Add(x);
         }
 
-        internal void clear()
+        public void clear()
         {
             data.Clear();
         }

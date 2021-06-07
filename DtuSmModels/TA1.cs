@@ -48,6 +48,7 @@ namespace DtuSmModels
             {
             sumvar += rain.getRain(index) - rain.getRain(index - tc);
             index++;
+                if (sumvar < 0) sumvar = 0; 
             return sumvar * depthToM3PrS;
             }
             catch (Exception e)
@@ -98,6 +99,9 @@ namespace DtuSmModels
 
             this.tc = Convert.ToInt32(areaAndTc[1]);
             this.depthToM3PrS = areaAndTc[0] / 1000 / (tc * 60);
+
+            if(this.tc<1)  this.tc = 1;
+            if (this.depthToM3PrS < 0.000000000001) this.depthToM3PrS = 0.000000000001;//simply to avid non-positive values
 
         }
 

@@ -6,7 +6,7 @@
 	************************************
 	<name>	SM2
 	<type>   drainage
-	<connection> SM3  TriggeredPWLinRes (45,7.5;0,0;1501.5,30)
+	<connection> SM3  TriggeredPWLinRes (45,7.5;0,1.05;1501.5,1.05)
 	************************************
 	<name>	SM3
 	<type>   drainage
